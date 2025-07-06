@@ -1,0 +1,7 @@
+{
+  "optimal_threshold": 0.86,
+  "model_type": "XGBoost",
+  "optimization_target": "high_detection",
+  "bad_detection_rate": 0.8270758122743682,
+  "false_alarm_rate": 0.08766700656260618
+}

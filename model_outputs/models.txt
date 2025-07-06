@@ -1,0 +1,184 @@
+CAPSTONE PROJECT - ML MODELING PIPELINE WITH THRESHOLD OPTIMIZATION
+Following Steps 6-8 from the guide + Threshold Tuning
+================================================================================
+Loading merged dataset...
+Dataset shape: (488150, 51)
+Target distribution:
+  Good (1): 391,199 (80.1%)
+  Bad (0): 96,951 (19.9%)
+
+==================================================
+STEP 1: Feature Engineering and Preparation
+==================================================
+Creating interaction features...
+Creating risk scores...
+Binning continuous features...
+Feature engineering completed!
+
+==================================================
+STEP 2: Feature Selection
+==================================================
+Selected 28 features:
+  Core: ['ProposedUnitsPerCarton', 'Weight']
+  Product: ['Material_Wool_Flag', 'Material_Cotton_Flag', 'Material_Polyester_Flag', 'ProductRiskScore', 'ProductIncidentCount', 'ProductTotalCost']
+  Supplier: ['AvgBadPackagingRate', 'AvgOnTimeDeliveryRate', 'SupplierRiskScore', 'SupplierIncidentCount', 'TotalPackagesHandled']
+  Temporal: ['IsWinter', 'IsSummer', 'IsSpring', 'IsAutumn', 'IsPeakSeason', 'Month', 'Quarter']
+  Interaction: ['Wool_Winter', 'Heavy_Winter', 'HighRisk_Supplier_Winter']
+  Categorical: ['ProposedFoldingMethod_encoded', 'ProposedLayout_encoded', 'GarmentType_encoded', 'WeightCategory_encoded', 'UnitsPerCartonCategory_encoded']
+
+==================================================
+STEP 3: Data Splitting
+==================================================
+Feature matrix shape: (488150, 28)
+Target vector shape: (488150,)
+Training set: (390520, 28), {1: 312959, 0: 77561}
+Test set: (97630, 28), {1: 78240, 0: 19390}
+
+==================================================
+STEP 4: Model Training and Evaluation
+==================================================
+
+--- Training Logistic Regression ---
+--- Training Random Forest ---
+Fitting 3 folds for each of 18 candidates, totalling 54 fits
+Best RF params: {'class_weight': 'balanced', 'max_depth': 10, 'max_features': 'log2', 'n_estimators': 300}
+--- Training XGBoost ---
+Fitting 3 folds for each of 162 candidates, totalling 486 fits
+Best XGB params: {'learning_rate': 0.05, 'max_depth': 4, 'n_estimators': 100, 'scale_pos_weight': 1, 'subsample': 0.8}
+
+--- Model Evaluation ---
+Comparing Default (0.5) vs Optimal (0.86) Thresholds
+------------------------------------------------------------
+
+Logistic Regression Results:
+  DEFAULT (0.5) vs OPTIMAL (0.86) Threshold:
+    Accuracy:         0.6139 vs 0.1986
+    Balanced Acc:     0.6497 vs 0.5000
+    Bad Detection:    0.7092 vs 1.0000
+    Bad Precision:    0.3002 vs 0.1986
+    AUC-ROC:          0.6934 vs 0.6934
+    Bad Packages Caught: 13,751 vs 19,390 out of 19,390
+    Improvement: +5,639 more bad packages detected!
+
+Random Forest Results:
+  DEFAULT (0.5) vs OPTIMAL (0.86) Threshold:
+    Accuracy:         0.6154 vs 0.1986
+    Balanced Acc:     0.6530 vs 0.5000
+    Bad Detection:    0.7155 vs 1.0000
+    Bad Precision:    0.3022 vs 0.1986
+    AUC-ROC:          0.7000 vs 0.7000
+    Bad Packages Caught: 13,873 vs 19,390 out of 19,390
+    Improvement: +5,517 more bad packages detected!
+
+XGBoost Results:
+  DEFAULT (0.5) vs OPTIMAL (0.86) Threshold:
+    Accuracy:         0.8014 vs 0.5217
+    Balanced Acc:     0.5014 vs 0.6365
+    Bad Detection:    0.0037 vs 0.8271
+    Bad Precision:    0.4931 vs 0.2701
+    AUC-ROC:          0.7007 vs 0.7007
+    Bad Packages Caught: 71 vs 16,037 out of 19,390
+    Improvement: +15,966 more bad packages detected!
+
+==================================================
+STEP 5: Feature Importance Analysis
+==================================================
+Top 15 Most Important Features (XGBoost):
+                               Random Forest   XGBoost
+AvgOnTimeDeliveryRate               0.195407  0.509130
+AvgBadPackagingRate                 0.163462  0.298635
+ProposedFoldingMethod_encoded       0.048796  0.062760
+Material_Wool_Flag                  0.022769  0.018894
+SupplierIncidentCount               0.082893  0.015965
+TotalPackagesHandled                0.149251  0.015942
+Weight                              0.031323  0.014944
+ProductTotalCost                    0.030299  0.011827
+ProductIncidentCount                0.013717  0.006884
+ProductRiskScore                    0.015042  0.006195
+HighRisk_Supplier_Winter            0.011475  0.003630
+ProposedUnitsPerCarton              0.023989  0.003592
+Material_Polyester_Flag             0.004606  0.003253
+ProposedLayout_encoded              0.009134  0.003014
+IsSummer                            0.001429  0.002927
+        
+==================================================
+STEP 6: Model Comparison Visualizations
+==================================================
+
+==================================================
+STEP 7: Business Insights and Recommendations
+==================================================
+OPTIMIZED MODEL PERFORMANCE: XGBoost with Threshold 0.86
+   AUC-ROC: 0.701
+   Balanced Accuracy: 0.637
+   Bad Class Detection: 0.827 (82.7%)
+   Bad Class Precision: 0.270
+
+IMPROVEMENT vs DEFAULT THRESHOLD:
+   Bad Detection Improvement: +0.823 (82.3%)
+   Balanced Accuracy Improvement: +0.135
+
+TOP 5 RISK FACTORS:
+   1. AvgOnTimeDeliveryRate: 0.509
+   2. AvgBadPackagingRate: 0.299
+   3. ProposedFoldingMethod_encoded: 0.063
+   4. Material_Wool_Flag: 0.019
+   5. SupplierIncidentCount: 0.016
+
+BUSINESS IMPACT ANALYSIS:
+   Bad packages in test set: 19,428
+   Baseline detection (0.5 threshold): 71 packages (0.4%)
+   Optimized detection (0.86 threshold): 16,068 packages (82.7%)
+   Additional bad packages caught: +15,997
+   Additional false alarms: +-8,642
+
+ROI ANALYSIS (Estimated):
+   Savings from catching bad packages: $799,850 ($50 × 15,997)
+   Cost of additional inspections: $-43,210 ($5 × -8,642)
+   Net benefit: $843,060
+   ROI: Infinite (pure benefit)
+
+OPERATIONAL RECOMMENDATIONS:
+   • Prioritize supplier performance monitoring and intervention
+   • Focus on suppliers with poor delivery performance
+   • Implement special handling protocols for winter/wool products
+   • Use historical incident data for proactive risk assessment
+   • Set model threshold to 0.86 for high detection mode
+   • Prepare quality team for ~55% inspection rate (vs ~0.1% currently)
+   • Monitor false alarm rates and adjust threshold if needed
+   • Focus inspection resources on highest-risk suppliers and products
+
+THRESHOLD STRATEGY RECOMMENDATIONS:
+   CURRENT CHOICE: High Detection (0.86 threshold)
+   • Best for: Quality-critical operations, high-value products
+   • Trade-off: High inspection workload but excellent bad package detection
+   • Alternative thresholds available:
+     - Conservative (0.79): 69% detection, 39% false alarms
+     - Balanced (0.80): 72% detection, 42% false alarms
+     - Current (0.86): 83% detection, 55% false alarms
+
+📈 NEXT STEPS:
+   1. Deploy model with 0.86 threshold in production
+   2. Set up real-time monitoring dashboard for threshold performance
+   3. Train quality inspection team for increased workload
+   4. Implement feedback loop to capture actual bad package costs
+   5. Consider dynamic thresholds based on product/supplier risk
+   6. Monitor and adjust threshold based on operational capacity
+
+==================================================
+STEP 8: Saving Model and Results
+==================================================
+✓ Saved best model: XGBoost
+✓ Saved optimal threshold configuration: 0.86
+✓ Saved feature list (28 features)
+✓ Saved comprehensive model comparison results
+✓ Saved deployment script template
+
+================================================================================
+ML MODELING PIPELINE WITH THRESHOLD OPTIMIZATION COMPLETE!
+================================================================================
+✓ Best model: XGBoost with optimized threshold (0.86)
+✓ Bad package detection improved from 0.4% to 82.5%
+✓ Model saved to: model_outputs/best_model_xgboost_optimized.pkl
+✓ Threshold configuration saved for production deployment
+✓ Ready for production deployment and monitoring
