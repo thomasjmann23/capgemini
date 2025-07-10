@@ -1,0 +1,341 @@
+import streamlit as st
+import streamlit.components.v1 as components
+
+# Set page configuration
+st.set_page_config(
+    page_title="Packaging Quality Cost-Benefit Calculator",
+    page_icon="📊",
+    layout="wide"
+)
+
+# HTML content with updated default inspection cost
+html_content = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packaging Quality Cost-Benefit Calculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 30px; }
+        .header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
+        .header h1 { color: #1565c0; font-size: 2.5rem; font-weight: 700; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .control-group { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #2196f3; }
+        .control-group label { display: block; font-weight: 600; color: #424242; margin-bottom: 8px; }
+        .control-group input, .control-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 16px; transition: border-color 0.3s; }
+        .control-group input:focus, .control-group select:focus { outline: none; border-color: #2196f3; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .metric-card { padding: 20px; border-radius: 8px; border-left: 5px solid; }
+        .metric-card.good { background: #e8f5e8; border-color: #4caf50; }
+        .metric-card.bad { background: #ffebee; border-color: #f44336; }
+        .metric-card.warning { background: #fff3e0; border-color: #ff9800; }
+        .metric-card.info { background: #e3f2fd; border-color: #2196f3; }
+        .metric-value { font-size: 2rem; font-weight: 700; margin: 8px 0; }
+        .metric-label { font-weight: 600; margin-bottom: 5px; }
+        .metric-sub { font-size: 0.9rem; opacity: 0.8; }
+        .financial { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .financial-section { padding: 25px; border-radius: 8px; }
+        .benefits { background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); }
+        .costs { background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%); }
+        .financial-section h3 { font-size: 1.3rem; margin-bottom: 15px; }
+        .financial-item { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .net-benefit { background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); color: white; padding: 30px; border-radius: 8px; text-align: center; margin-bottom: 30px; }
+        .net-benefit h3 { font-size: 1.8rem; margin-bottom: 10px; }
+        .net-benefit .amount { font-size: 3rem; font-weight: 700; margin-bottom: 10px; }
+        .comparison-table { background: #f8f9fa; padding: 25px; border-radius: 8px; }
+        .comparison-table table { width: 100%; border-collapse: collapse; }
+        .comparison-table th, .comparison-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        .comparison-table th { background: #2196f3; color: white; font-weight: 600; }
+        .comparison-table tr.selected { background: #e3f2fd; }
+        .chart-container { margin: 20px 0; height: 300px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="width: 40px; height: 40px; background: #2196f3; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">📊</div>
+            <h1>Packaging Quality Cost-Benefit Calculator</h1>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="threshold">Model Threshold</label>
+                <select id="threshold" onchange="calculate()">
+                    <option value="0.50">0.50 (Conservative)</option>
+                    <option value="0.79">0.79 (F1-Optimized)</option>
+                    <option value="0.80">0.80 (Balanced)</option>
+                    <option value="0.86" selected>0.86 (High Detection)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="incidentCost">Cost per Incident (€)</label>
+                <input type="number" id="incidentCost" value="580" min="0" onchange="calculate()">
+            </div>
+            <div class="control-group">
+                <label for="inspectionCost">Cost per Inspection (€)</label>
+                <input type="number" id="inspectionCost" value="120" min="0" onchange="calculate()">
+            </div>
+        </div>
+
+        <div class="metrics" id="metrics">
+            <!-- Metrics will be populated by JavaScript -->
+        </div>
+
+        <div class="financial">
+            <div class="financial-section benefits">
+                <h3>💰 Benefits</h3>
+                <div id="benefits">
+                    <!-- Benefits will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="financial-section costs">
+                <h3>⚠️ Costs</h3>
+                <div id="costs">
+                    <!-- Costs will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <div class="net-benefit">
+            <h3>Net Annual Benefit</h3>
+            <div class="amount" id="netBenefit">€0</div>
+            <div id="benefitSummary">Calculate to see results</div>
+        </div>
+
+        <div class="comparison-table">
+            <h3 style="margin-bottom: 15px;">Threshold Strategy Comparison</h3>
+            <table id="comparisonTable">
+                <thead>
+                    <tr>
+                        <th>Threshold</th>
+                        <th>Detection Rate</th>
+                        <th>False Alarm Rate</th>
+                        <th>Net Benefit</th>
+                        <th>Strategy</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonBody">
+                    <!-- Table rows will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="benefitChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Model performance data from your results
+        const thresholdData = {
+            0.50: { badRecall: 0.0037, badPrecision: 0.4931 },
+            0.79: { badRecall: 0.692, badPrecision: 0.304 }, 
+            0.80: { badRecall: 0.717, badPrecision: 0.299 },
+            0.86: { badRecall: 0.827, badPrecision: 0.270 }
+        };
+
+        const totalBadPackages = 19390;
+        const totalGoodPackages = 78240;
+
+        let chart = null;
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('de-DE', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function formatPercentage(value) {
+            return (value * 100).toFixed(1) + '%';
+        }
+
+        function calculate() {
+            const threshold = parseFloat(document.getElementById('threshold').value);
+            const costPerIncident = parseInt(document.getElementById('incidentCost').value);
+            const costPerInspection = parseInt(document.getElementById('inspectionCost').value);
+
+            const performance = thresholdData[threshold];
+            
+            // Calculate confusion matrix components
+            const badDetected = Math.round(performance.badRecall * totalBadPackages);
+            const badMissed = totalBadPackages - badDetected;
+            
+            const falsePositives = performance.badPrecision > 0 
+                ? Math.round((badDetected / performance.badPrecision) - badDetected)
+                : totalGoodPackages;
+            
+            const trueNegatives = totalGoodPackages - falsePositives;
+            
+            // Cost calculations
+            const savingsFromPrevention = badDetected * costPerIncident;
+            const inspectionCosts = falsePositives * costPerInspection;
+            const costsFromMissed = badMissed * costPerIncident;
+            const netBenefit = savingsFromPrevention - inspectionCosts;
+            const roi = inspectionCosts > 0 ? (netBenefit / inspectionCosts) * 100 : 0;
+            
+            // Update metrics
+            document.getElementById('metrics').innerHTML = `
+                <div class="metric-card good">
+                    <div class="metric-label">Bad Packages Detected</div>
+                    <div class="metric-value">${badDetected.toLocaleString()}</div>
+                    <div class="metric-sub">${formatPercentage(performance.badRecall)} detection rate</div>
+                </div>
+                <div class="metric-card bad">
+                    <div class="metric-label">Bad Packages Missed</div>
+                    <div class="metric-value">${badMissed.toLocaleString()}</div>
+                    <div class="metric-sub">${formatPercentage(1 - performance.badRecall)} miss rate</div>
+                </div>
+                <div class="metric-card warning">
+                    <div class="metric-label">False Alarms</div>
+                    <div class="metric-value">${falsePositives.toLocaleString()}</div>
+                    <div class="metric-sub">${formatPercentage(falsePositives / totalGoodPackages)} of good packages</div>
+                </div>
+                <div class="metric-card info">
+                    <div class="metric-label">ROI</div>
+                    <div class="metric-value">${roi.toFixed(0)}%</div>
+                    <div class="metric-sub">Return on investment</div>
+                </div>
+            `;
+
+            // Update benefits
+            document.getElementById('benefits').innerHTML = `
+                <div class="financial-item">
+                    <span>Incidents Prevented:</span>
+                    <span style="font-weight: 600;">${formatCurrency(savingsFromPrevention)}</span>
+                </div>
+                <div class="financial-item">
+                    <span>Bad Packages Detected:</span>
+                    <span style="font-weight: 600;">${badDetected.toLocaleString()}</span>
+                </div>
+            `;
+
+            // Update costs
+            document.getElementById('costs').innerHTML = `
+                <div class="financial-item">
+                    <span>Inspection Costs:</span>
+                    <span style="font-weight: 600;">${formatCurrency(inspectionCosts)}</span>
+                </div>
+                <div class="financial-item">
+                    <span>Missed Incidents:</span>
+                    <span style="font-weight: 600;">${formatCurrency(costsFromMissed)}</span>
+                </div>
+            `;
+
+            // Update net benefit
+            document.getElementById('netBenefit').textContent = formatCurrency(netBenefit);
+            document.getElementById('benefitSummary').textContent = 
+                `Prevents ${badDetected.toLocaleString()} incidents • Requires ${falsePositives.toLocaleString()} inspections • ${roi.toFixed(0)}% ROI`;
+
+            // Update comparison table
+            updateComparisonTable(costPerIncident, costPerInspection, threshold);
+            
+            // Update chart
+            updateChart(costPerIncident, costPerInspection);
+        }
+
+        function updateComparisonTable(costPerIncident, costPerInspection, currentThreshold) {
+            const tbody = document.getElementById('comparisonBody');
+            tbody.innerHTML = '';
+
+            const strategies = {
+                0.50: 'Conservative',
+                0.79: 'F1-Optimized', 
+                0.80: 'Balanced',
+                0.86: 'High Detection'
+            };
+
+            Object.entries(thresholdData).forEach(([thresh, perf]) => {
+                const detected = Math.round(perf.badRecall * totalBadPackages);
+                const fp = perf.badPrecision > 0 ? Math.round((detected / perf.badPrecision) - detected) : totalGoodPackages;
+                const benefit = (detected * costPerIncident) - (fp * costPerInspection);
+                
+                const row = document.createElement('tr');
+                if (parseFloat(thresh) === currentThreshold) {
+                    row.className = 'selected';
+                }
+                
+                row.innerHTML = `
+                    <td style="font-weight: 600;">${thresh}</td>
+                    <td>${formatPercentage(perf.badRecall)}</td>
+                    <td>${formatPercentage(fp / totalGoodPackages)}</td>
+                    <td>${formatCurrency(benefit)}</td>
+                    <td>${strategies[thresh]}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateChart(costPerIncident, costPerInspection) {
+            const ctx = document.getElementById('benefitChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            const labels = [];
+            const benefits = [];
+            const colors = [];
+
+            Object.entries(thresholdData).forEach(([thresh, perf]) => {
+                const detected = Math.round(perf.badRecall * totalBadPackages);
+                const fp = perf.badPrecision > 0 ? Math.round((detected / perf.badPrecision) - detected) : totalGoodPackages;
+                const benefit = (detected * costPerIncident) - (fp * costPerInspection);
+                
+                labels.push(`Threshold ${thresh}`);
+                benefits.push(benefit);
+                colors.push(thresh === document.getElementById('threshold').value ? '#2196f3' : '#90caf9');
+            });
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Net Benefit (€)',
+                        data: benefits,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c === '#2196f3' ? '#1976d2' : '#64b5f6'),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Net Benefit Comparison by Threshold',
+                            font: { size: 16, weight: 'bold' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '€' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initial calculation
+        calculate();
+    </script>
+</body>
+</html>
+"""
+
+# Display the HTML component
+components.html(html_content, height=1400, scrolling=True)
